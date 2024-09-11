@@ -1,46 +1,41 @@
-import { useState, useEffect } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { database } from '../firebase';
+import { useState, useEffect, useRef } from 'react';
+import getMessages from '../services/getMessages';
 import Message from './Message';
-import Field from './Field';
-import Name from './Name';
 
-function Body() {
+function Chat({ chat }) {
     const [messages, setMessages] = useState([]);
+    const containerRef = useRef(null);
+    const messagesByDay = Object.groupBy(messages, ({ date }) => date);
 
-    function fetchMessages() {
-        const messagesRef = ref(database, 'messages/chat1');
-
-        onValue(messagesRef, (snapshot) => {
-            const chat = snapshot.val();
-            setMessages([]);
-            Object.values(chat).forEach(message => {
-                setMessages(messages => [...messages, message]);
-            });
-        });
-    }
     useEffect(() => {
-        fetchMessages();
-    }, []);
+        getMessages(chat, setMessages);
+    }, [chat]);
+
+    useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+    }, [messages]); 
+
 
     return (
-        <div className="flex flex-col gap-y-8 my-4">
-            <h1 className="text-3xl text-center text-slate-800 font-bold">Global Chat</h1>
-            <span className="flex items-center justify-center gap-x-3">
-                <span className="text-xl text-center font-bold italic">Your name is: </span>
-                <span><Name /></span>
-            </span>
-            <div className="border border-slate-800 rounded-xl ps-6 pe-5 py-8 bg-slate-100">
-                <ul className="flex flex-wrap justify-start items-center gap-y-6">
-                    {messages.map(message =>
-                        <li key={message.id} className="basis-full">
-                            <Message {...message} />
-                        </li>)}
-                </ul>
-            </div>
-            <Field />
+        <div ref={containerRef} className="border border-slate-800 rounded-s-xl ps-6 pe-5 py-8 bg-slate-100 h-80 overflow-y-scroll">
+            <ul className="flex flex-wrap justify-start items-center gap-y-5 max-h-full">
+                {Object.entries(messagesByDay).map(([day, dailyMessages]) => 
+                    <li key={day} className="basis-full pb-10">
+                        <h4 className="text-xl text-center">{day}</h4>
+                        <ul className="flex flex-wrap justify-start items-center gap-y-6">
+                            {dailyMessages.map(message => 
+                                <li key={message.id} className="basis-full">
+                                    <Message {...message} />
+                                </li>
+                            )}
+                        </ul>
+                    </li>
+                )}
+            </ul>
         </div>
     );
 }
 
-export default Body;
+export default Chat;
